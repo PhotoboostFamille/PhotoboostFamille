@@ -78,6 +78,18 @@ dialog.big form{display:flex;flex-direction:column;flex:1;min-height:0}
   #sheet img{display:block;width:100%;height:auto}
 }
 @media (prefers-reduced-motion:reduce){#num.pop{animation:none}#flash{transition:none}}
+/* Flèches de cadre et rangée d'effets façon Snap */
+.arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:3;width:max(52px,8vmin);height:max(52px,8vmin);border-radius:50%;border:0;background:rgba(10,16,32,.45);color:#fff;display:grid;place-items:center;cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.arrow svg{width:50%;height:50%}
+#prevF{left:2vmin}#nextF{right:2vmin}
+#label{position:absolute;left:50%;top:3vmin;transform:translateX(-50%);z-index:3;padding:.5em 1.1em;border-radius:99px;background:rgba(10,16,32,.6);font-weight:700;font-size:max(16px,2.4vmin);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .3s}
+#label.on{opacity:1}
+#lenses{--b:max(60px,10vmin);position:absolute;left:0;right:0;bottom:2.5vmin;z-index:3;display:flex;gap:2.2vmin;overflow-x:auto;scroll-snap-type:x mandatory;padding:1.6vmin calc(50% - var(--b)/2);scrollbar-width:none;-webkit-overflow-scrolling:touch}
+#lenses::-webkit-scrollbar{display:none}
+#lenses button{flex:none;width:var(--b);height:var(--b);border-radius:50%;border:0;padding:0;background:rgba(255,255,255,.22);font-size:calc(var(--b)*.55);line-height:1;scroll-snap-align:center;cursor:pointer;transition:transform .2s;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+#lenses button.sel{background:rgba(255,255,255,.4);transform:scale(1.05)}
+#ring{position:absolute;left:50%;bottom:2.5vmin;z-index:4;width:calc(max(60px,10vmin) + 3.2vmin + 14px);height:calc(max(60px,10vmin) + 3.2vmin + 14px);margin-left:calc((max(60px,10vmin) + 3.2vmin + 14px)/-2);border-radius:50%;border:max(5px,.9vmin) solid #fff;box-shadow:0 0 2vmin rgba(0,0,0,.35);pointer-events:none}
+[data-s=review] .arrow,[data-s=review] #lenses,[data-s=review] #ring,[data-s=count] .arrow,[data-s=count] #lenses,[data-s=count] #ring,#shutter{display:none!important}
 #welcome{position:fixed;inset:0;z-index:50;background:radial-gradient(circle at 50% 45%,#2a3c60 0,var(--bg) 60%,var(--deep) 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4vmin;padding:6vmin;text-align:center;transition:opacity .4s ease}
 #welcome.off{opacity:0;pointer-events:none}
 #welcome[hidden]{display:none}
@@ -105,12 +117,17 @@ dialog.big form{display:flex;flex-direction:column;flex:1;min-height:0}
       <video id="video" autoplay playsinline muted></video>
       <canvas id="view"></canvas>
       <img id="shot" alt="Photo prise">
+      <button class="arrow" id="prevF" type="button" aria-label="Cadre précédent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="arrow" id="nextF" type="button" aria-label="Cadre suivant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+      <div id="label" aria-live="polite"></div>
+      <div id="lenses" aria-label="Effets : faites glisser, puis touchez le rond pour prendre la photo"></div>
+      <div id="ring"></div>
       <div id="num" aria-live="assertive"></div>
       <div id="msg" hidden><p id="msgText"></p><button class="pill main" id="retry">Réessayer</button></div>
     </div>
   </div>
   <div id="bar">
-    <button class="tool" id="fxBtn" aria-label="Effets et cadres"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></svg></button>
+    <button class="tool" id="fxBtn" aria-label="Cadre et texte"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></svg></button>
     <button class="tool" id="galBtn" aria-label="Galerie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 9"/></svg></button>
     <button id="shutter" aria-label="Prendre la photo"></button>
     <button class="tool" id="gear" aria-label="Réglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
@@ -121,11 +138,9 @@ dialog.big form{display:flex;flex-direction:column;flex:1;min-height:0}
 
 <dialog id="fx" class="sheet">
   <form method="dialog">
-    <h2>Effets</h2>
+    <h2>Cadre et texte</h2>
     <p id="fxStatus" role="status"></p>
     <p class="gl">Cadre</p><div class="chips" id="chFrame"></div>
-    <p class="gl">Chapeau</p><div class="chips" id="chHat"></div>
-    <p class="gl">Visage</p><div class="chips" id="chFace"></div>
     <p class="gl">Date</p><div class="chips" id="chDate"></div>
     <label>Légende sur la photo
       <input type="text" id="cap" maxlength="40" placeholder="Ex. : Anniversaire de Léa">
@@ -552,10 +567,59 @@ function chips(el,items,get,set){
 function paint(){
   chips($('chDate'),[['showDate','Ajouter la date']],v=>S[v],v=>{S[v]=!S[v]});
   chips($('chFrame'),FRAMES,v=>S.frame===v,v=>{S.frame=v});
-  chips($('chHat'),HATS,v=>S.hat===v,v=>{S.hat=v;if(v!=='none')ensureFaces()});
-  chips($('chFace'),[['stache','Moustache'],['beard','Barbe de Père Noël'],['glasses','Lunettes de soleil']],v=>S[v],v=>{S[v]=!S[v];if(S[v])ensureFaces()});
 }
 $('shutter').onclick=shoot;
+
+/* ---------- Flèches de cadre ---------- */
+function flashLabel(t){const l=$('label');l.textContent=t;l.classList.add('on');clearTimeout(flashLabel.t);flashLabel.t=setTimeout(()=>l.classList.remove('on'),1400)}
+function stepFrame(d){
+  const i=FRAMES.findIndex(f=>f[0]===S.frame),n=FRAMES[(i+d+FRAMES.length)%FRAMES.length];
+  S.frame=n[0];save();paint();flashLabel('Cadre : '+n[1]);
+}
+$('prevF').onclick=()=>stepFrame(-1);
+$('nextF').onclick=()=>stepFrame(1);
+
+/* ---------- Effets façon Snap : on fait glisser, le rond du milieu prend la photo ---------- */
+const LENSES=[
+  ['🙂','Sans effet',{}],
+  ['😎','Lunettes de soleil',{glasses:true}],
+  ['🥸','Moustache',{stache:true}],
+  ['🎩','Haut-de-forme',{hat:'top'}],
+  ['🥳','Chapeau de fête',{hat:'party'}],
+  ['👑','Couronne',{hat:'crown'}],
+  ['🎅','Bonnet de Noël',{hat:'santa'}],
+  ['🧔','Barbe de Père Noël',{beard:true}],
+  ['🤶','Père Noël complet',{hat:'santa',beard:true}],
+  ['🕶️','Gentleman',{hat:'top',stache:true,glasses:true}]
+];
+const lensBox=$('lenses');let lens=0;
+function applyLens(i,announce){
+  lens=i;const e=LENSES[i][2];
+  S.hat=e.hat||'none';S.stache=!!e.stache;S.glasses=!!e.glasses;S.beard=!!e.beard;save();
+  [...lensBox.children].forEach((b,k)=>b.classList.toggle('sel',k===i));
+  if(accOn())ensureFaces();
+  if(announce)flashLabel(LENSES[i][1]);
+}
+function centerLens(i,smooth){const b=lensBox.children[i];lensBox.scrollTo({left:b.offsetLeft-(lensBox.clientWidth-b.offsetWidth)/2,behavior:smooth?'smooth':'auto'})}
+LENSES.forEach(([emo,name],i)=>{
+  const b=document.createElement('button');b.type='button';b.textContent=emo;b.setAttribute('aria-label',name);
+  b.onclick=()=>{if(i===lens)shoot();else{centerLens(i,true);applyLens(i,true)}};
+  lensBox.append(b);
+});
+lensBox.addEventListener('scroll',()=>{
+  clearTimeout(lensBox.t);
+  lensBox.t=setTimeout(()=>{
+    const mid=lensBox.scrollLeft+lensBox.clientWidth/2;let best=0,bd=1e9;
+    [...lensBox.children].forEach((b,k)=>{const d=Math.abs(b.offsetLeft+b.offsetWidth/2-mid);if(d<bd){bd=d;best=k}});
+    if(best!==lens)applyLens(best,true);
+  },120);
+},{passive:true});
+{
+  const cur=LENSES.findIndex(([,,e])=>(e.hat||'none')===S.hat&&!!e.stache===S.stache&&!!e.glasses===S.glasses&&!!e.beard===S.beard);
+  applyLens(cur<0?0:cur,false);
+  requestAnimationFrame(()=>centerLens(lens,false));
+  addEventListener('resize',()=>centerLens(lens,false));
+}
 $('again').onclick=again;
 $('print').onclick=()=>doPrint();
 $('retry').onclick=startCamera;
