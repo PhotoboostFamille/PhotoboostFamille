@@ -101,6 +101,23 @@ dialog.big form{display:flex;flex-direction:column;flex:1;min-height:0}
 @keyframes breathe{50%{transform:scale(1.05)}}
 @media (prefers-reduced-motion:reduce){#go{animation:none}}
 @media print{#welcome{display:none!important}}
+/* ---------- Caméra plein écran : plus de bordure, les boutons flottent sur l'image ---------- */
+body{background:#000}
+#app{display:block;padding:0}
+#stage{position:fixed;inset:0;padding:0;display:block}
+#photo{position:absolute;inset:0;border-radius:0;box-shadow:none;background:#000}
+#shot{object-fit:contain;background:#000}
+#bar{position:fixed;left:0;right:0;bottom:0;z-index:5;flex-direction:row!important;justify-content:center;gap:4vmin;min-height:0!important;min-width:0!important;padding:3vmin 4vmin max(4vmin,env(safe-area-inset-bottom))!important;pointer-events:none}
+#bar>*{pointer-events:auto}
+#bar .pill:not(.main){background:rgba(10,16,32,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+#back{position:absolute;z-index:4;left:max(2.5vmin,env(safe-area-inset-left));top:max(2.5vmin,env(safe-area-inset-top));width:max(52px,8vmin);height:max(52px,8vmin);border-radius:50%;border:0;background:rgba(10,16,32,.5);color:#fff;display:grid;place-items:center;cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+#back svg{width:50%;height:50%}
+[data-s=count] #back{display:none}
+#lenses,#ring{bottom:max(3vmin,env(safe-area-inset-bottom))}
+#label{top:max(3vmin,env(safe-area-inset-top))}
+.menu{display:flex;flex-wrap:wrap;justify-content:center;gap:2.5vmin;margin-top:1vmin}
+.menu button{display:flex;align-items:center;gap:.6em;min-height:max(52px,7.5vmin);padding:0 1.4em;border-radius:99px;border:2px solid rgba(255,255,255,.35);background:rgba(255,255,255,.08);font-weight:700;font-size:max(17px,2.6vmin);cursor:pointer}
+.menu svg{width:1.3em;height:1.3em}
 </style>
 </head>
 <body>
@@ -110,6 +127,11 @@ dialog.big form{display:flex;flex-direction:column;flex:1;min-height:0}
     <svg viewBox="0 0 64 64" fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M8 22a5 5 0 0 1 5-5h8l4-6h14l4 6h8a5 5 0 0 1 5 5v26a5 5 0 0 1-5 5H13a5 5 0 0 1-5-5z"/><circle cx="32" cy="34" r="10"/><circle cx="49" cy="25" r="1.5" fill="#fff"/></svg>
   </button>
   <p>Touchez l’appareil photo pour commencer</p>
+  <div class="menu">
+    <button type="button" id="gear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>Réglages</button>
+    <button type="button" id="galBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 9"/></svg>Galerie</button>
+    <button type="button" id="fxBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></svg>Texte et date</button>
+  </div>
 </div>
 <div id="app" data-s="live">
   <div id="stage">
@@ -117,6 +139,7 @@ dialog.big form{display:flex;flex-direction:column;flex:1;min-height:0}
       <video id="video" autoplay playsinline muted></video>
       <canvas id="view"></canvas>
       <img id="shot" alt="Photo prise">
+      <button id="back" type="button" aria-label="Retour au menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 5l-7 7 7 7"/></svg></button>
       <button class="arrow" id="prevF" type="button" aria-label="Cadre précédent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
       <button class="arrow" id="nextF" type="button" aria-label="Cadre suivant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
       <div id="label" aria-live="polite"></div>
@@ -127,10 +150,7 @@ dialog.big form{display:flex;flex-direction:column;flex:1;min-height:0}
     </div>
   </div>
   <div id="bar">
-    <button class="tool" id="fxBtn" aria-label="Texte et date"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></svg></button>
-    <button class="tool" id="galBtn" aria-label="Galerie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 9"/></svg></button>
     <button id="shutter" aria-label="Prendre la photo"></button>
-    <button class="tool" id="gear" aria-label="Réglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
     <button class="pill rev" id="again">Reprendre</button>
     <button class="pill main rev" id="print">Imprimer</button>
   </div>
@@ -244,13 +264,8 @@ function ratio(){
   return land?l/s:s/l;
 }
 function fit(){
-  const st=$('stage'),cs=getComputedStyle(st);
-  const aw=st.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);
-  const ah=st.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom);
-  const r=ratio();let w=aw,h=w/r;
-  if(h>ah){h=ah;w=h*r}
-  w=Math.max(w,2);h=Math.max(h,2);
-  photo.style.width=w+'px';photo.style.height=h+'px';
+  /* L'aperçu remplit tout l'écran ; la photo finale garde le format du papier (ratio()). */
+  const w=Math.max(photo.clientWidth||innerWidth,2),h=Math.max(photo.clientHeight||innerHeight,2);
   const k=Math.min(Math.min(devicePixelRatio||1,2),1280/Math.max(w,h));
   view.width=Math.max(2,Math.round(w*k));view.height=Math.max(2,Math.round(h*k));
 }
@@ -759,7 +774,13 @@ let started=false;
 $('go').onclick=()=>{
   if(started)return;started=true;
   $('welcome').classList.add('off');setTimeout(()=>$('welcome').hidden=true,450);
-  startCamera();
+  lockR=null;app.dataset.s='live';fit();startCamera();
+};
+$('back').onclick=()=>{
+  if(busy)return;
+  started=false;lockR=null;app.dataset.s='live';
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+  const w=$('welcome');w.hidden=false;requestAnimationFrame(()=>w.classList.remove('off'));
 };
 paint();fit();tick();
 if(accOn())ensureFaces();
