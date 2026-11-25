@@ -735,7 +735,14 @@ function openViewer(p){
   $('viewer').showModal();
 }
 $('galBtn').onclick=()=>{$('gal').showModal();refreshGallery()};
-$('vPrint').onclick=()=>{if(cur)doPrint(new File([cur.blob],'photobooth.jpg',{type:'image/jpeg'}),cur.r,curUrl)};
+/* Sur iPad, lancer l'impression ou le partage pendant qu'une fenêtre (galerie, visionneuse) est ouverte
+   bloque toute la page. On ferme donc les fenêtres d'abord, dans le même toucher. */
+$('vPrint').onclick=()=>{
+  if(!cur)return;
+  const file=new File([cur.blob],'photobooth.jpg',{type:'image/jpeg'}),r=cur.r,url=curUrl;
+  $('viewer').close();$('gal').close();
+  doPrint(file,r,url);
+};
 $('vDel').onclick=async()=>{
   if(!cur)return;
   try{await photoDel(cur.id)}catch(e){}
