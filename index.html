@@ -728,8 +728,11 @@ $('vDel').onclick=async()=>{
   try{await photoDel(cur.id)}catch(e){}
   $('viewer').close();refreshGallery();
 };
+/* Pas de confirm() : sur iPad, cette fenêtre système met la caméra en pause. On demande un second toucher à la place. */
 $('galClear').onclick=async()=>{
-  if(!confirm('Supprimer toutes les photos de cette galerie ?'))return;
+  const b=$('galClear');
+  if(!b.dataset.arm){b.dataset.arm='1';b.textContent='Toucher encore pour tout supprimer';clearTimeout(b.t);b.t=setTimeout(()=>{delete b.dataset.arm;b.textContent='Tout supprimer'},4000);return}
+  clearTimeout(b.t);delete b.dataset.arm;b.textContent='Tout supprimer';
   try{await photosClear()}catch(e){}
   refreshGallery();
 };
@@ -741,6 +744,19 @@ $('autosave').onchange=e=>{S.autosave=e.target.checked;save()};
 purge();setInterval(purge,5*60*1000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)purge()});
 
+/* ---------- Caméra toujours vivante : relance si elle se fige (fenêtres, galerie, mise en veille) ---------- */
+let lastT=-1,stuck=0,reviving=false;
+async function revive(){
+  if(!started||reviving||document.hidden||app.dataset.s==='review')return;
+  const tr=stream&&stream.getVideoTracks()[0];
+  if(!stream||!stream.active||!tr||tr.readyState==='ended'){reviving=true;await startCamera();reviving=false;lastT=-1;stuck=0;return}
+  if(video.paused){try{await video.play()}catch(e){}}
+  if(video.currentTime===lastT){if(++stuck>=3){reviving=true;await startCamera();reviving=false;stuck=0}}
+  else stuck=0;
+  lastT=video.currentTime;
+}
+setInterval(revive,1000);
+document.querySelectorAll('dialog').forEach(d=>d.addEventListener('close',()=>{stuck=0;if(video.paused)video.play().catch(()=>{});setTimeout(revive,300)}));
 let started=false;
 $('go').onclick=()=>{
   if(started)return;started=true;
