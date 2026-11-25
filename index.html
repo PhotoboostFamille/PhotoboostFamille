@@ -127,7 +127,7 @@ dialog.big form{display:flex;flex-direction:column;flex:1;min-height:0}
     </div>
   </div>
   <div id="bar">
-    <button class="tool" id="fxBtn" aria-label="Cadre et texte"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></svg></button>
+    <button class="tool" id="fxBtn" aria-label="Texte et date"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></svg></button>
     <button class="tool" id="galBtn" aria-label="Galerie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 9"/></svg></button>
     <button id="shutter" aria-label="Prendre la photo"></button>
     <button class="tool" id="gear" aria-label="Réglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
@@ -138,9 +138,8 @@ dialog.big form{display:flex;flex-direction:column;flex:1;min-height:0}
 
 <dialog id="fx" class="sheet">
   <form method="dialog">
-    <h2>Cadre et texte</h2>
+    <h2>Texte et date</h2>
     <p id="fxStatus" role="status"></p>
-    <p class="gl">Cadre</p><div class="chips" id="chFrame"></div>
     <p class="gl">Date</p><div class="chips" id="chDate"></div>
     <label>Légende sur la photo
       <input type="text" id="cap" maxlength="40" placeholder="Ex. : Anniversaire de Léa">
@@ -566,7 +565,6 @@ function chips(el,items,get,set){
 }
 function paint(){
   chips($('chDate'),[['showDate','Ajouter la date']],v=>S[v],v=>{S[v]=!S[v]});
-  chips($('chFrame'),FRAMES,v=>S.frame===v,v=>{S.frame=v});
 }
 $('shutter').onclick=shoot;
 
