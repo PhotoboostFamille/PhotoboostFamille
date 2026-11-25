@@ -46,6 +46,7 @@ dialog h2{font-size:1.3rem;margin-bottom:1rem}
 dialog.sheet{margin:auto 0 0 0;width:100%;max-width:none;max-height:60dvh;border-radius:3vmin 3vmin 0 0;padding:max(20px,3vmin) max(20px,4vmin) max(20px,env(safe-area-inset-bottom))}
 dialog.sheet::backdrop{background:transparent}
 label{display:grid;gap:.35rem;margin-bottom:1rem;font-size:.95rem}
+label[hidden]{display:none}
 label.chk{display:flex;align-items:center;gap:.7rem}
 select,input[type=text]{min-height:48px;padding:0 .8rem;border-radius:.6rem;border:1px solid rgba(255,255,255,.35);background:#1d2a44;-webkit-user-select:text;user-select:text}
 input[type=checkbox]{width:26px;height:26px}
@@ -169,6 +170,12 @@ dialog.big form{display:flex;flex-direction:column;flex:1;min-height:0}
         <option value="a4">A4</option>
       </select>
     </label>
+    <label id="layoutRow">Photos par feuille
+      <select id="layout">
+        <option value="one">Une grande photo</option>
+        <option value="two">Deux petites photos (prises à la suite)</option>
+      </select>
+    </label>
     <label>Orientation
       <select id="orient">
         <option value="auto">Automatique (selon la tablette)</option>
@@ -204,7 +211,7 @@ const MODEL='https://storage.googleapis.com/mediapipe-models/face_landmarker/fac
 const VISION='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const $=id=>document.getElementById(id);
 const app=$('app'),photo=$('photo'),video=$('video'),shot=$('shot'),num=$('num'),view=$('view'),vctx=view.getContext('2d');
-let S={paper:'10x15',orient:'auto',delay:3,mirror:false,facing:'user',frame:'none',hat:'none',stache:false,glasses:false,caption:'',keep:168,autosave:true,beard:false,showDate:false};
+let S={paper:'10x15',orient:'auto',delay:3,mirror:false,facing:'user',frame:'none',hat:'none',stache:false,glasses:false,caption:'',keep:168,autosave:true,beard:false,showDate:false,layout:'one'};
 try{Object.assign(S,JSON.parse(localStorage.getItem('photobooth')||'{}'))}catch(e){}
 const save=()=>{try{localStorage.setItem('photobooth',JSON.stringify(S))}catch(e){}};
 let stream=null,lockR=null,busy=false,dataUrl='',wake=null,previewMirror=true;
@@ -213,10 +220,13 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const accOn=()=>S.hat!=='none'||S.stache||S.glasses||S.beard;
 
 /* ---------- Mise en page ---------- */
+const two=()=>S.paper==='10x15'&&S.layout==='two';
 function ratio(){
   if(lockR)return lockR;
   const [s,l]=PAPERS[S.paper];
   const land=S.orient==='land'||(S.orient==='auto'&&innerWidth>=innerHeight);
+  /* Deux petites photos : chacune occupe une demi-feuille 10×15, soit environ 4:3 (les deux sont empilées ou côte à côte). */
+  if(two())return land?4/3:3/4;
   return land?l/s:s/l;
 }
 function fit(){
@@ -454,25 +464,51 @@ function tick(){
   }
   render(vctx,view.width,view.height,previewMirror,faces);
 }
+function captureCanvas(cw,ch){
+  const c=document.createElement('canvas');c.width=cw;c.height=ch;
+  render(c.getContext('2d'),cw,ch,S.mirror,accOn()?faces:[]);
+  return c;
+}
 function capture(){
   const r=ratio(),L=1800;
   const cw=r>=1?L:Math.round(L*r),ch=r>=1?Math.round(L/r):L;
-  const c=document.createElement('canvas');c.width=cw;c.height=ch;
-  render(c.getContext('2d'),cw,ch,S.mirror,accOn()?faces:[]);
-  return c.toDataURL('image/jpeg',.93);
+  return captureCanvas(cw,ch).toDataURL('image/jpeg',.93);
+}
+/* Feuille 10×15 à 18 px/mm avec 2 mm de blanc autour et entre les photos : chaque case fait exactement 4:3. */
+const SHEET_M=36,SLOT_L=1728,SLOT_S=1296;
+function smallShot(){return lockR>=1?captureCanvas(SLOT_L,SLOT_S):captureCanvas(SLOT_S,SLOT_L)}
+function composeTwo(a,b){
+  const stack=a.width>=a.height,m=SHEET_M;
+  const c=document.createElement('canvas');
+  c.width=stack?1800:2700;c.height=stack?2700:1800;
+  const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
+  x.drawImage(a,m,m);
+  if(stack)x.drawImage(b,m,2*m+a.height);else x.drawImage(b,2*m+a.width,m);
+  return c;
 }
 
 /* ---------- Prise de vue et impression ---------- */
+function pop(t){num.textContent=t;num.classList.remove('pop');void num.offsetWidth;num.classList.add('pop')}
+async function countdown(){
+  for(let i=S.delay;i>0;i--){pop(i);await sleep(1000)}
+  num.textContent='';num.classList.remove('pop');
+}
+function flash(){const f=$('flash');f.classList.add('on');requestAnimationFrame(()=>requestAnimationFrame(()=>f.classList.remove('on')))}
 async function shoot(){
   if(busy||!stream||!video.videoWidth)return;
   busy=true;lockR=ratio();app.dataset.s='count';
-  for(let i=S.delay;i>0;i--){
-    num.textContent=i;num.classList.remove('pop');void num.offsetWidth;num.classList.add('pop');
-    await sleep(1000);
+  if(two()){
+    await countdown();flash();const a=smallShot();
+    await sleep(600);pop('Encore une !');await sleep(1400);
+    await countdown();flash();const b=smallShot();
+    const sheet=composeTwo(a,b);
+    dataUrl=sheet.toDataURL('image/jpeg',.93);
+    lockR=sheet.width/sheet.height;fit();
+  }else{
+    await countdown();flash();
+    dataUrl=capture();
   }
-  num.textContent='';num.classList.remove('pop');
-  const f=$('flash');f.classList.add('on');requestAnimationFrame(()=>requestAnimationFrame(()=>f.classList.remove('on')));
-  dataUrl=capture();shot.src=dataUrl;$('sheetImg').src=dataUrl;
+  shot.src=dataUrl;$('sheetImg').src=dataUrl;
   try{shareFile=toFile(dataUrl)}catch(e){shareFile=null}
   if(S.autosave&&shareFile)savePhoto(shareFile,dataUrl,lockR);
   app.dataset.s='review';busy=false;
@@ -528,8 +564,12 @@ $('gear').onclick=()=>$('dlg').showModal();
 $('fs').onclick=()=>{const d=document.documentElement;(d.requestFullscreen||d.webkitRequestFullscreen||(()=>alert('Plein écran indisponible ici. Sur iPad, utilisez « Ajouter à l’écran d’accueil ».'))).call(d)};
 for(const [id,isNum] of [['paper',0],['orient',0],['delay',1]]){
   const el=$(id);el.value=S[id];
-  el.onchange=()=>{S[id]=isNum?+el.value:el.value;save();fit()};
+  el.onchange=()=>{S[id]=isNum?+el.value:el.value;save();fit();layoutRow()};
 }
+function layoutRow(){$('layoutRow').hidden=S.paper!=='10x15'}
+$('layout').value=S.layout;
+$('layout').onchange=e=>{S.layout=e.target.value;save();fit()};
+layoutRow();
 $('facing').value=S.facing;
 $('facing').onchange=e=>{S.facing=e.target.value;save();startCamera()};
 $('mirror').checked=S.mirror;
