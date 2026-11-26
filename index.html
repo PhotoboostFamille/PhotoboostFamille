@@ -223,6 +223,12 @@ body{background:#000}
     <label>Compte à rebours
       <select id="delay"><option value="3">3 secondes</option><option value="5">5 secondes</option><option value="10">10 secondes</option></select>
     </label>
+    <label>Impression
+      <select id="printMode">
+        <option value="image">Envoyer la photo (JPEG) : imprimantes photo Canon, Selphy…</option>
+        <option value="page">Impression du navigateur (PDF)</option>
+      </select>
+    </label>
     <label class="chk"><input type="checkbox" id="mirror"> Photo en miroir, comme l’aperçu</label>
     <label class="chk"><input type="checkbox" id="autosave"> Enregistrer chaque photo dans la galerie</label>
     <label>Suppression automatique des photos
@@ -245,7 +251,7 @@ const MODEL='https://storage.googleapis.com/mediapipe-models/face_landmarker/fac
 const VISION='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const $=id=>document.getElementById(id);
 const app=$('app'),photo=$('photo'),video=$('video'),shot=$('shot'),num=$('num'),view=$('view'),vctx=view.getContext('2d');
-let S={paper:'10x15',orient:'auto',delay:3,mirror:false,facing:'user',frame:'none',hat:'none',stache:false,glasses:false,caption:'',keep:168,autosave:true,beard:false,showDate:false,layout:'one'};
+let S={paper:'10x15',orient:'auto',delay:3,mirror:false,facing:'user',frame:'none',hat:'none',stache:false,glasses:false,caption:'',keep:168,autosave:true,beard:false,showDate:false,layout:'one',printMode:'image'};
 try{Object.assign(S,JSON.parse(localStorage.getItem('photobooth')||'{}'))}catch(e){}
 const save=()=>{try{localStorage.setItem('photobooth',JSON.stringify(S))}catch(e){}};
 let stream=null,lockR=null,busy=false,dataUrl='',wake=null,previewMirror=true;
@@ -554,13 +560,26 @@ function toast(t){
   const e=$('toast');e.textContent=t;e.hidden=false;
   clearTimeout(toast.t);toast.t=setTimeout(()=>{e.hidden=true},6000);
 }
+function photoName(){const d=new Date(),z=n=>String(n).padStart(2,'0');return `photobooth-${d.getFullYear()}${z(d.getMonth()+1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}.jpg`}
+function download(file){
+  const u=URL.createObjectURL(file),a=document.createElement('a');
+  a.href=u;a.download=file.name;document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u),60000);
+}
 async function doPrint(file,r,url){
   file=file||shareFile;r=r||lockR;if(url)$('sheetImg').src=url;
-  /* iPhone / iPad : la feuille de partage contient « Imprimer » (AirPrint), c'est la voie fiable sur Safari. */
-  if(isIOS&&file&&navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-    toast('Dans la liste, touchez « Imprimer », puis choisissez votre imprimante et le format du papier.');
-    try{await navigator.share({files:[file]});return}
-    catch(e){if(e&&e.name==='AbortError')return}
+  /* Les imprimantes photo (Canon Selphy…) veulent une image, pas le PDF que fabrique l'impression du navigateur.
+     On envoie donc la photo JPEG, déjà au format du papier, via le partage du système. */
+  if(S.printMode!=='page'&&file){
+    file=new File([file],photoName(),{type:'image/jpeg'});
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+      toast(isIOS?'Touchez « Imprimer », puis choisissez l’imprimante Canon et le papier 10 × 15.':'Choisissez l’application Canon (Canon PRINT ou SELPHY) ou « Imprimer », puis l’imprimante.');
+      try{await navigator.share({files:[file]});return}
+      catch(e){if(e&&e.name==='AbortError')return}
+    }
+    download(file);
+    toast('Photo enregistrée dans Téléchargements. Ouvrez-la avec l’application Canon pour l’imprimer.');
+    return;
   }
   const [s,l]=PAPERS[S.paper],land=r>=1;
   $('pageStyle').textContent=`@page{size:${land?l:s}mm ${land?s:l}mm;margin:0}`;
@@ -649,6 +668,8 @@ $('layout').onchange=e=>{S.layout=e.target.value;save();fit()};
 layoutRow();
 $('facing').value=S.facing;
 $('facing').onchange=e=>{S.facing=e.target.value;save();startCamera()};
+$('printMode').value=S.printMode;
+$('printMode').onchange=e=>{S.printMode=e.target.value;save()};
 $('mirror').checked=S.mirror;
 $('mirror').onchange=e=>{S.mirror=e.target.checked;save()};
 $('cap').value=S.caption;
